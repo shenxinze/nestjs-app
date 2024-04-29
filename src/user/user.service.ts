@@ -3,7 +3,8 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  Logger
+  Logger,
+  UnauthorizedException
 } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -13,6 +14,8 @@ import { RedisService } from 'src/redis/redis.service'
 import { md5 } from 'src/utils'
 import { Role } from './entities/role.entity'
 import { Permission } from './entities/permission.entity'
+import { LoginUserDto } from './dto/login-user.dto'
+import { LoginUserVo } from './vo/login-user.vo'
 
 @Injectable()
 export class UserService {
@@ -100,6 +103,68 @@ export class UserService {
     } catch (error) {
       this.logger.error(error, UserService)
       return '注册失败'
+    }
+  }
+
+  async login(loginUser: LoginUserDto, is_admin: boolean) {
+    const user = await this.userRepository.findOne({
+      where: {
+        username: loginUser.username,
+        is_admin
+      },
+      relations: ['roles', 'roles.permissions']
+    })
+    if (!user) {
+      throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST)
+    }
+    if (user.password !== md5(loginUser.password)) {
+      throw new HttpException('密码错误', HttpStatus.BAD_REQUEST)
+    }
+    const vo = new LoginUserVo()
+    vo.userInfo = {
+      id: user.id,
+      username: user.username,
+      nike_name: user.nick_name,
+      email: user.email,
+      head_pic: user.head_pic,
+      phone_number: user.phone_number,
+      is_forzen: user.is_forzen,
+      is_admin: user.is_admin,
+      create_time: user.create_time,
+      update_time: user.update_time,
+      roles: user.roles.map((role) => role.name),
+      permissions: user.roles.reduce((arr, item) => {
+        item.permissions.forEach((permission: Permission) => {
+          if (arr.indexOf(permission) === -1) {
+            arr.push(permission)
+          }
+        })
+        return arr
+      }, [])
+    }
+    return vo
+  }
+
+  async findUserById (userId: number, is_admin: boolean) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId
+      },
+      relations: ['roles', 'roles.permissions']
+    })
+    return {
+      id: user.id,
+      username: user.username,
+      is_admin: user.is_admin,
+      roles: user.roles.map(role => role.name),
+      permissions: user.roles.reduce((arr, item) => { 
+        item.permissions.forEach(permission => {
+          if (arr.indexOf(permission) === -1) {
+            arr.push(permission)
+          }
+        })
+        return arr
+      }, [])
     }
   }
 }
