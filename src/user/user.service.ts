@@ -16,6 +16,8 @@ import { Role } from './entities/role.entity'
 import { Permission } from './entities/permission.entity'
 import { LoginUserDto } from './dto/login-user.dto'
 import { LoginUserVo } from './vo/login-user.vo'
+import { UpdateUserPasswordDto } from './dto/update-user-password.dto'
+import { UpdateUserDto } from './dto/update-user.dto'
 
 @Injectable()
 export class UserService {
@@ -145,7 +147,7 @@ export class UserService {
     return vo
   }
 
-  async findUserById (userId: number, is_admin: boolean) {
+  async findUserById(userId: number, is_admin: boolean) {
     const user = await this.userRepository.findOne({
       where: {
         id: userId
@@ -156,15 +158,73 @@ export class UserService {
       id: user.id,
       username: user.username,
       is_admin: user.is_admin,
-      roles: user.roles.map(role => role.name),
-      permissions: user.roles.reduce((arr, item) => { 
-        item.permissions.forEach(permission => {
+      roles: user.roles.map((role) => role.name),
+      permissions: user.roles.reduce((arr, item) => {
+        item.permissions.forEach((permission) => {
           if (arr.indexOf(permission) === -1) {
             arr.push(permission)
           }
         })
         return arr
       }, [])
+    }
+  }
+
+  async findUserDetailById(userId: number) {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId
+      }
+    })
+    return user
+  }
+
+  async updatePassword(userId: number, passwordDto: UpdateUserPasswordDto) {
+    const captcha = await this.redisService.get(
+      `update_password_captcha_${passwordDto.email}`
+    )
+    if (!captcha) {
+      throw new HttpException('验证码已过期', HttpStatus.BAD_REQUEST)
+    }
+    if (passwordDto.captcha !== captcha) {
+      throw new HttpException('验证码错误', HttpStatus.BAD_REQUEST)
+    }
+    const foundUser = await this.userRepository.findOneBy({ id: userId })
+
+    foundUser.password = md5(passwordDto.password)
+
+    try {
+      await this.userRepository.save(foundUser)
+      return '修改密码成功'
+    } catch (err) {
+      this.logger.error(err, UserService)
+      return '修改密码失败'
+    }
+  }
+
+  async update(userId: number, updateUserDto: UpdateUserDto) {
+    const captcha = await this.redisService.get(
+      `update_user_captcha_${updateUserDto.email}`
+    )
+    if (!captcha) {
+      throw new HttpException('验证码已过期', HttpStatus.BAD_REQUEST)
+    }
+    if (updateUserDto.captcha !== captcha) {
+      throw new HttpException('验证码错误', HttpStatus.BAD_REQUEST)
+    }
+    const foundUser = await this.userRepository.findOneBy({ id: userId })
+    if (updateUserDto.nick_name) {
+      foundUser.nick_name = updateUserDto.nick_name
+    }
+    if (updateUserDto.head_pic) {
+      foundUser.head_pic = updateUserDto.head_pic
+    }
+    try {
+      await this.userRepository.save(foundUser)
+      return '用户信息修改成功'
+    } catch (err) {
+      this.logger.error(err, UserService)
+      return '用户信息修改失败'
     }
   }
 }
