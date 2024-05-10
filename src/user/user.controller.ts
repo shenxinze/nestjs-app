@@ -14,7 +14,7 @@ import { RedisService } from 'src/redis/redis.service'
 import { LoginUserDto } from './dto/login-user.dto'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
-import { createAccessToken, createRefreshToken } from 'src/utils'
+import { createToken } from 'src/utils'
 import { RequireLogin, UserInfo } from 'src/custom.decorator'
 import { UserDetailVo } from './vo/user-info.vo'
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto'
@@ -62,15 +62,9 @@ export class UserController {
   @Post('login')
   async userLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, false)
-    vo.access_token = createAccessToken(
-      this.jwtService,
-      this.configService,
-      vo.userInfo
-    )
-    vo.refresh_token = createRefreshToken(
-      this.jwtService,
-      this.configService,
-      vo.userInfo
+    Object.assign(
+      vo,
+      createToken(this.jwtService, this.configService, vo.userInfo)
     )
     return vo
   }
@@ -78,15 +72,9 @@ export class UserController {
   @Post('admin/login')
   async adminLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, true)
-    vo.access_token = createAccessToken(
-      this.jwtService,
-      this.configService,
-      vo.userInfo
-    )
-    vo.refresh_token = createRefreshToken(
-      this.jwtService,
-      this.configService,
-      vo.userInfo
+    Object.assign(
+      vo,
+      createToken(this.jwtService, this.configService, vo.userInfo)
     )
     return vo
   }
@@ -96,20 +84,7 @@ export class UserController {
     try {
       const data = this.jwtService.verify(refreshToken)
       const user = await this.userService.findUserById(data.userId, false)
-      const access_token = createAccessToken(
-        this.jwtService,
-        this.configService,
-        user
-      )
-      const refresh_token = createRefreshToken(
-        this.jwtService,
-        this.configService,
-        user
-      )
-      return {
-        access_token,
-        refresh_token
-      }
+      return createToken(this.jwtService, this.configService, user)
     } catch (err) {
       throw new UnauthorizedException('token 已失效， 请重新登录')
     }
@@ -120,20 +95,7 @@ export class UserController {
     try {
       const data = this.jwtService.verify(refreshToken)
       const user = await this.userService.findUserById(data.userId, true)
-      const access_token = createAccessToken(
-        this.jwtService,
-        this.configService,
-        user
-      )
-      const refresh_token = createRefreshToken(
-        this.jwtService,
-        this.configService,
-        user
-      )
-      return {
-        access_token,
-        refresh_token
-      }
+      return createToken(this.jwtService, this.configService, user)
     } catch (err) {
       throw new UnauthorizedException('token 已失效， 请重新登录')
     }

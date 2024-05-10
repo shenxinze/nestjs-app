@@ -15,35 +15,30 @@ export const md5 = (str: string) => {
   return hash.digest('hex')
 }
 
-export const createAccessToken = (
+export const createToken = (
   jwtService: JwtService,
   configService: ConfigService,
   user: User
 ) => {
-  return jwtService.sign(
-    {
-      userId: user.id,
-      username: user.username,
-      roles: user.roles,
-      permissions: user.permissions
-    },
-    {
-      expiresIn: configService.get('JWT_ACCESS_TOKEN_EXPIRES_TIME') || '30m'
-    }
-  )
-}
-
-export const createRefreshToken = (
-  jwtService: JwtService,
-  configService: ConfigService,
-  user: User
-) => {
-  return jwtService.sign(
-    {
-      useId: user.id
-    },
-    {
-      expiresIn: configService.get('JWT_REFRESH_TOKEN_EXPIRES_TIME') || '7d'
-    }
-  )
+  return {
+    access_token: jwtService.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        roles: user.roles,
+        permissions: user.permissions
+      },
+      {
+        expiresIn: configService.get('JWT_ACCESS_TOKEN_EXPIRES_TIME') || '30m'
+      }
+    ),
+    refresh_token: jwtService.sign(
+      {
+        useId: user.id
+      },
+      {
+        expiresIn: configService.get('JWT_REFRESH_TOKEN_EXPIRES_TIME') || '7d'
+      }
+    )
+  }
 }
