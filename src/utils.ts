@@ -1,3 +1,4 @@
+import { BadRequestException, ParseIntPipe } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
 import * as crypto from 'crypto'
@@ -41,4 +42,12 @@ export const createToken = (
       }
     )
   }
+}
+
+export function generateParseIntPipe(name: string, tip = '应该传数字') {
+  return new ParseIntPipe({
+    exceptionFactory() {
+      throw new BadRequestException(name + ' ' + tip)
+    }
+  })
 }

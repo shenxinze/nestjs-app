@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Inject,
+  ParseIntPipe,
   Post,
   Query,
   UnauthorizedException
@@ -14,7 +17,7 @@ import { RedisService } from 'src/redis/redis.service'
 import { LoginUserDto } from './dto/login-user.dto'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
-import { createToken } from 'src/utils'
+import { createToken, generateParseIntPipe } from 'src/utils'
 import { RequireLogin, UserInfo } from 'src/custom.decorator'
 import { UserDetailVo } from './vo/user-info.vo'
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto'
@@ -161,5 +164,33 @@ export class UserController {
       html: '<p>您的验证码是: ' + code + '</p>'
     })
     return '发送成功'
+  }
+
+  @Get('freeze')
+  async freeze(
+    @Query('id', generateParseIntPipe('id'))
+    userId: number
+  ) {
+    await this.userService.freezeUserById(userId)
+    return 'success'
+  }
+
+  @Get('list')
+  async list(
+    @Query('page', new DefaultValuePipe(1), generateParseIntPipe('page'))
+    page: number,
+    @Query('size', new DefaultValuePipe(10), generateParseIntPipe('size'))
+    size: number,
+    @Query('username') username: string,
+    @Query('nick_name') nickName: string,
+    @Query('email') email: string
+  ) {
+    return await this.userService.findUsersByPage(
+      username,
+      nickName,
+      email,
+      page,
+      size
+    )
   }
 }

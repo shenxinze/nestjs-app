@@ -3,11 +3,10 @@ import {
   HttpStatus,
   Inject,
   Injectable,
-  Logger,
-  UnauthorizedException
+  Logger
 } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Like, Repository } from 'typeorm'
 import { User } from './entities/user.entity'
 import { RegisterUserDto } from './dto/create-user.dto'
 import { RedisService } from 'src/redis/redis.service'
@@ -225,6 +224,51 @@ export class UserService {
     } catch (err) {
       this.logger.error(err, UserService)
       return '用户信息修改失败'
+    }
+  }
+
+  async freezeUserById(id: number) {
+    const user = await this.userRepository.findOneBy({ id })
+    user.is_forzen = true
+    await this.userRepository.update({ id }, user)
+  }
+
+  async findUsersByPage(
+    username: string,
+    nickName: string,
+    email: string,
+    page: number,
+    size: number
+  ) {
+    const skip = (page - 1) * size
+    const condition: Record<string, any> = {}
+    if (username) {
+      condition.username = Like(`%${username}%`)
+    }
+    if (nickName) {
+      condition.nick_name = Like(`%${nickName}%`)
+    }
+    if (email) {
+      condition.email = Like(`%${email}%`)
+    }
+    const [users, total] = await this.userRepository.findAndCount({
+      select: [
+        'id',
+        'username',
+        'nick_name',
+        'email',
+        'phone_number',
+        'is_forzen',
+        'head_pic',
+        'create_time'
+      ],
+      skip,
+      take: size,
+      where: condition
+    })
+    return {
+      users,
+      total
     }
   }
 }
